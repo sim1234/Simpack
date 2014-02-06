@@ -201,7 +201,9 @@ class GamePart(object):
 
     def _stop(self):
         self._return["_from"] = self._name
-        self._return.update(self.stop())
+        r = self.stop()
+        if r:
+            self._return.update(r)
         return self._return
     
 

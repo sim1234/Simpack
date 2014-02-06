@@ -115,11 +115,11 @@ class Builder:
         
         self.compressed = True
         
-        self.exe_name = self.script.rsplit(".", 1) + ".exe"
+        self.exe_name = self.script.rsplit(".", 1)[0] + ".exe"
         
         
         self.setup()
-        self._exe_name = self.script.rsplit(".", 1) + ".exe"
+        self._exe_name = self.script.rsplit(".", 1)[0] + ".exe"
 
     def setup(self): # Setup your own parameters
         pass
