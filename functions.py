@@ -72,3 +72,20 @@ def my_exec(code):
     return d
 
 
+class Controls(object):
+    def __init__(self, *functions_to_control):
+        self.fns = functions_to_control
+
+    def __getitem__(self, index):
+        return self.fns[index][0]
+
+    def __call__(self, t, *ifs):
+        x = 0
+        while x < len(ifs):
+            if ifs[x]:
+                self.fns[x](t)
+            x += 1
+            
+            
+            
+
