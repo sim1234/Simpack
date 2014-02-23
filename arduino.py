@@ -1,7 +1,7 @@
 # coding:utf-8
 
 import serial
-from threading import Thread
+import threading
 
 class Serial(object):
     
@@ -33,7 +33,7 @@ class Serial(object):
             print "<`%s`" % l
     
     def print_async(self):
-        self.thread = Thread(target = self._async)
+        self.thread = threading.Thread(target = self._async)
         self.thread.start()
         
         

@@ -2,7 +2,7 @@
 
 import sys
 import pygame
-from .functions import python_frozen
+from simpack.functions import python_frozen, tuc, Controls, load_config
 
 
 class GameBase(object):
@@ -50,9 +50,10 @@ class GameBase(object):
         if bit == None:
             bit = self.bufor
         font = pygame.font.Font(pygame.font.match_font('doesNotExist,Arial'), size)
-        text = font.render(text, True, color)
         if bgcolor is not None:
-            text = font.render(text, True, color, bgcolor)
+            text = font.render(tuc(text), True, color, bgcolor)
+        else:
+            text = font.render(tuc(text), True, color)
         textRect = text.get_rect()
         textRect.x = px
         textRect.y = py
@@ -121,7 +122,7 @@ class GameBase(object):
                 print "Normal Exit."
                 return 0
             except (SystemExit, KeyboardInterrupt):
-                print "System Exit."
+                print "Forced Exit."
                 return 1
             except:
                 import sys
@@ -228,41 +229,5 @@ class ExitGamePart(GamePart):
 
 
 
-
-"""
-class Return(object):
-    def __init__(self, **kvars):
-        self.data = kvars
-
-    def update(self, iterable):
-        self.data.update(iterable)
-
-    def add(self, key, value):
-        self.data[key] = value
-
-    def has_key(self, key):
-        return self.data.has_key(key)
-
-    def get_data(self):
-        return self.data
-
-    def get(self, key, default = None):
-        return self.data.get(key, default)
-
-    def __getitem__(self, key):
-        return self.data.get(key, None)
-
-    def __setitem__(self, key, value):
-        self.data[key] = value
-
-    def __delitem__(self, key):
-        self.pop(key)
-
-    def pop(self, key):
-        self.data.pop(key)
-
-    def __repr__(self):
-        return "<Return object: %s>" % str(self.data)
-"""
 
 

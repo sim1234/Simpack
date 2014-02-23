@@ -3,51 +3,7 @@
 import urllib2
 import urllib
 import Cookie
-import time
-#import random
-import threading
-#from .functions import between
-
-class SubProces(threading.Thread):
-            def __init__(self, function, lag = 0, maxduration = 0, *args, **kwargs):
-                threading.Thread.__init__(self)
-                self.function = function
-                self.result = None
-                self.running = 2
-                self.a = args
-                self.k = kwargs
-                self.lag = lag / 1000.0
-                self.stoper = None
-                self.start()
-                #if maxduration:
-                #    self.stoper = SubProces(self.stop, maxduration, 0)
-                    
-          
-            def run(self):
-                self.running = 1
-                if self.lag:
-                    time.sleep(self.lag)
-                self.result = self.function(*self.a, **self.k)
-                #if self.stoper:
-                #    self.stoper.stop()
-                self.running = 0
-                
-            
-            def stop(self):
-                if self.running:
-                    self.running = 0
-                    #if self.stoper:
-                    #    self.stoper.stop()
-                    self.join()
-                    self.join(0)
-                    self.join(1)
-                
-            def get_result(self):
-                if self.running:
-                    raise RuntimeError("Function didn't finish yet!")
-                else:
-                    return self.result
-                
+from simpack.functions import SubProces     
                 
 class NoRedirection(urllib2.HTTPErrorProcessor):
     def http_response(self, request, response):
@@ -118,4 +74,53 @@ class CookieHandler(object):
         return self.get(url, data, headers, add_cookies)
         
     
+
+class WorkManager(object):
+    def __init__(self, max_workers = 4):
+        self.workers = []
+        self.max_workers = max_workers
+        self._work = None
         
+        
+    def main_loop(self):
+        self.start()
+        while self.status:
+            self.processIO()
+            
+    def start(self):
+        self.status = 2;          
+        self._work = self.get_work()
+        
+    def stop(self):
+        self.status = 0;
+        while len(self.workers):
+            self.workers.pop()
+        
+    def processIO(self):
+        while len(self.workers) < self.max_workers and self.status == 2:
+            try:
+                self.workers.append(SubProces(self.work, 0, 0, *self._work.next()))
+            except StopIteration:
+                self.status = 1
+        x = 0
+        while x < len(self.workers):
+            if not self.workers[x].running:
+                r = self.workers.pop(x).result
+                if r is not None:
+                    self.result(*r)
+            else:
+                x += 1
+        if self.status == 1 and len(self.workers) == 0:
+            self.status = 0
+         
+    
+    def get_work(self):
+        raise StopIteration
+        yield
+    
+    def work(self, *a):
+        pass
+    
+    def result(self, *a):
+        print a 
+    

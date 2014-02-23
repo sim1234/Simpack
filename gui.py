@@ -3,7 +3,7 @@
 import pygame
 import random
 import re
-from .functions import tuc, key_name, invert_color
+from simpack.functions import tuc, key_name, invert_color
 
 
 

@@ -4,12 +4,6 @@ import time
 import math
 import pygame
 
-def add_t(*tabless):
-        return map(sum, zip(*tabless))
-
-def mul_t(table, number = 1.0):
-    return map(lambda x: x*number, table)
-
 
 def iterate_over_PhisicsObjects(lista):
     x = 0
@@ -158,8 +152,8 @@ class PhisicsObject(object):
 
 class Acceleration(PhisicsObject):
     def __init__(self, fx, fy):
-        self.fx = fx
-        self.fy = fy
+        self.fx = float(fx)
+        self.fy = float(fy)
 
     def change_to(self, fx, fy):
         self.fx = fx
@@ -175,10 +169,10 @@ class Acceleration(PhisicsObject):
 
 class PhisicalObject(PhisicsObject):
     def __init__(self, px=0, py=0, vx=0, vy=0):
-        self.px = px
-        self.py = py
-        self.vx = vx
-        self.vy = vy
+        self.px = float(px)
+        self.py = float(py)
+        self.vx = float(vx)
+        self.vy = float(vy)
 
     def tick(self, time):
         self.px += self.vx * time

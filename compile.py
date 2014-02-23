@@ -1,9 +1,8 @@
 # coding: utf-8
 
 from distutils.core import setup
-import py2exe
-import pygame
 from modulefinder import Module
+import py2exe
 import glob
 import fnmatch
 import sys
@@ -11,7 +10,9 @@ import os
 import shutil
 import re
 
-pygame.font.init()
+import pygame
+
+pygame.font.init() # For some reason
 
 
 def find_pygame_dlls():

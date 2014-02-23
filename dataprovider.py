@@ -2,12 +2,10 @@
 
 
 import os
-#import sys
-import re
 import pygame
 import StringIO
 import zipfile
-
+from simpack.functions import load_config, make_config
 
 
 CONFIG = {
@@ -15,27 +13,6 @@ CONFIG = {
           "archive" : "data.zip",
           "datas": {}
           }
-
-
-
-def load_config(config):
-    c = {}
-    for l in config.splitlines(False):
-        if re.match(r"^\s*#.*$", l):
-            continue
-        #m = re.match(r"^\s*(\w+)\s*=\s*(.*)\s*$", l)
-        m = re.match(r"^(\w+)=(.*)$", l)
-        if m:
-            c[m.group(1)] = m.group(2)
-    return c
-
-
-def make_config(config):
-    r = ""
-    for k, v in config.iteritems():
-        r += "%s=%s\n" % (k, v)
-    return r
-
 
 
 class NormalProvider(object):
