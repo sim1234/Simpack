@@ -88,7 +88,7 @@ class WorkManager(object):
             self.processIO()
             
     def start(self):
-        self.status = 2;          
+        self.status = 2        
         self._work = self.get_work()
         
     def stop(self):
@@ -112,7 +112,7 @@ class WorkManager(object):
                 x += 1
         if self.status == 1 and len(self.workers) == 0:
             self.status = 0
-         
+            self.end()
     
     def get_work(self):
         raise StopIteration
@@ -123,4 +123,7 @@ class WorkManager(object):
     
     def result(self, *a):
         print a 
+        
+    def end(self):
+        pass
     

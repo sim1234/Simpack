@@ -5,6 +5,7 @@ import sys
 import math
 import time
 import pygame
+import ctypes
 import StringIO
 import threading
 
@@ -13,6 +14,13 @@ import threading
 def python_frozen():
     return hasattr(sys, "frozen")
     
+    
+def alert(msg = "Alert!", title = "Alert", a = 0, b = 0x00001000):
+        #ctypes.windll.user32.MessageBoxA(a, msg, title, b)
+        return SubProces(ctypes.windll.user32.MessageBoxA, 0, 0, a, msg, title, b)
+    
+
+        
 
 def va2xy(v, a):
     return v * math.cos(a), v * math.sin(a)
@@ -27,6 +35,16 @@ def normaliserad(rad): # zamienia podaną liczbę radianów na liczbę z przedzi
         rad-=2*math.pi
     return rad
 
+
+def tuc(s):
+    try:
+        return unicode(s, "UTF-8")
+    except:
+        try:
+            return unicode(str(s), "UTF-8")
+        except:
+            return s
+
 def between(s, start, end):
     try:
         i1 = s.index(start) + len(start)
@@ -36,6 +54,7 @@ def between(s, start, end):
         return ""
     
 def fill_to(v, ln, f = " "):
+    v = str(v)
     if len(v) > ln:
         return v[:ln]
     return v + f * (ln - len(v))
@@ -57,27 +76,17 @@ def color_from_str(s):
 def invert_color(c):
     return tuple(map(lambda x: 255 - x, c))
 
+
 def key_name(key):
     k = pygame.key.name(key)
     return k[0].upper() + k[1:].lower()
+
                     
-
-def tuc(s):
-    try:
-        return unicode(s, "UTF-8")
-    except:
-        try:
-            return unicode(str(s), "UTF-8")
-        except:
-            return s
-
 def load_image(content, name=".jpg"):
     return pygame.image.load(StringIO.StringIO(content), name)
 
 def load_ld(content):
     return eval(content)
-
-
 
 def load_config(config):
     c = {}
@@ -89,7 +98,6 @@ def load_config(config):
         if m:
             c[m.group(1)] = m.group(2)
     return c
-
 
 def make_config(config):
     r = ""
@@ -105,6 +113,7 @@ def my_exec(code):
     exec c in d
     d.pop("__builtins__")
     return d
+
 
 
 class Controls(object):
@@ -162,5 +171,9 @@ class SubProces(threading.Thread):
                 else:
                     return self.result
             
-            
+            def wait_for_result(self, sleep = 0.0001):
+                while not self.running:
+                    if sleep:
+                        time.sleep(sleep)
+                return self.result
 

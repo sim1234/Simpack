@@ -13,7 +13,8 @@ from simpack.request import WorkManager
 
 
 def localhost():
-    return socket.gethostbyname(socket.gethostname())
+    return ""
+    #return socket.gethostbyname(socket.gethostname())
 
 
 def try_blocking(fn, *args, **kwargs):
@@ -25,6 +26,36 @@ def try_blocking(fn, *args, **kwargs):
         raise
 
 
+class Message(object):
+    _typ_len = 10
+    def make_typ(self, typ):
+        return fill_to(typ, Message._typ_len, "-")
+    
+    def __init__(self, typ, msg, compressed = None):
+        self.typ = self.make_typ(typ)
+        self.msg = msg
+        self._compressed = bool(compressed)
+        if compressed is None and len(msg) > 500:
+            self._compressed = True
+    
+    @staticmethod
+    def from_str(msg):
+        e = Message._typ_len + 1
+        c = msg[0] == "1"
+        t = msg[1:e]
+        m = msg[e:]
+        if c:
+            m = bz2.decompress(m)
+        return Message(t, m, c)
+    
+    def is_type(self, typ):
+        return self.typ == self.make_typ(typ)
+    
+    def __str__(self):
+        m, c = self.msg, "0"
+        if self._compressed:
+            m, c = bz2.compress(m), "1"
+        return "%s%s%s" % (c, self.make_typ(self.typ), m)
 
 class BaseProtocol(object):
     #pattern = re.compile(r"(\d+);(.*)")
@@ -60,30 +91,18 @@ class BaseProtocol(object):
 
 
 class Protocol(BaseProtocol):
+    msg = Message
     
-    def send(self, msg, typ = "", compresed = None):
-        msg = str(msg)
-        if compresed in (None, True):
-            if compresed or len(msg) > 500:
-                compresed = True
-                msg = str(bz2.compress(msg))
-        msg = "%d%s%s" % (bool(compresed), fill_to(typ, 3, "-"), msg)
+    def send(self, typ, msg, compressed = None):
+        msg = self.msg(typ, msg, compressed)
         BaseProtocol.send(self, msg)
         
         
-    
-    
     def make_message(self, msg):
         msg = BaseProtocol.make_message(self, msg)
         try:
-            if len(msg) >= 4:
-                c = msg[0]
-                t = msg[1:4]
-                if c == "1":
-                    return {"typ" : t, "msg" : bz2.decompress(msg[4:])}
-                elif c == "0":
-                    return {"typ" : t, "msg" : msg[4:]}
-        except IOError: 
+            return self.msg.from_str(msg)
+        except IndexError: 
             pass
         print "Bad message: '%s'." % msg
         
@@ -95,17 +114,17 @@ class ExtendedProtocol(Protocol):
         self.ping_ = 0
     
     def make_message(self, msg):
-        m = Protocol.make_message(self, msg)
-        if m["typ"] == self.reserved[0]:
-            self.send(m["msg"], self.reserved[1], False)
-        elif m["typ"] == self.reserved[1]:
-            self.ping_ = time.time() - float(m["msg"])
+        msg = Protocol.make_message(self, msg)
+        if msg.is_type(self.reserved[0]):
+            self.send(self.reserved[1], msg.msg, False)
+        elif msg.is_type(self.reserved[1]):
+            self.ping_ = time.time() - float(msg.msg)
             # print "Ping: %f ms" % (self.ping_ * 1000)
         else:
-            return m
+            return msg
     
     def ping(self):
-        self.send(time.time(), self.reserved[0])
+        self.send(self.reserved[0], time.time(), False)
         return self.ping_
         
 
@@ -185,7 +204,7 @@ class Client(object):
             if self.running:
                 raise Exception("Socket already connected")
             #self.sock.connect((host, port))
-            self.sock = socket.create_connection((host, port))
+            self.sock = socket.create_connection((host, port), self.timeout)
             self.running = True
             print "Connected to " + str(host) + ":" + str(port) + "."
             self.sock.setblocking(False)
@@ -197,8 +216,8 @@ class Client(object):
             #return 1
         
         
-    def send(self, msg, *args, **kwargs):
-        self.protocol.send(msg, *args, **kwargs)
+    def send(self, *args, **kwargs):
+        self.protocol.send(*args, **kwargs)
     
     
     def get_messages(self):
@@ -216,7 +235,7 @@ class Client(object):
         #except socket.error as e:
         #    self.broken(self, e)
         if self.lastmsg + self.timeout < time.clock():
-            raise Exception("Socket Timeout")
+            raise socket.error("Socket Timeout")
         
         for msg in self.protocol.recive():
             self.messages.append(msg)
@@ -240,8 +259,14 @@ class Client(object):
 
     def close(self):
         self.running = False
-        self.sock.shutdown(socket.SHUT_RDWR)
-        self.sock.close()
+        try:
+            self.sock.shutdown(socket.SHUT_RDWR)
+        except socket.error:
+            pass
+        try:
+            self.sock.close()
+        except socket.error:
+            pass
         print "Socket on %s:%d closed" % (self.host, self.port)
         
 
@@ -275,9 +300,9 @@ class Server(object):
     def tick(self):
         pass
     
-    def send_all(self, msg, *args, **kwargs):
+    def send_all(self, *args, **kwargs):
         for s in self._clients:
-            s.send(msg, *args, **kwargs)
+            s.send(*args, **kwargs)
  
     def stop(self):
         self._running = False
@@ -321,7 +346,8 @@ class Server(object):
             self.new_client(c) # Handle new clients
         except socket.error as e:
             if e.errno != errno.EWOULDBLOCK:
-                raise
+                pass
+                #raise
         
         self.tick() # User loop  
         

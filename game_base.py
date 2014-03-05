@@ -2,6 +2,7 @@
 
 import sys
 import pygame
+import multiprocessing
 from simpack.functions import python_frozen, tuc, Controls, load_config
 
 
@@ -14,6 +15,8 @@ class GameBase(object):
                 sys.setdefaultencoding("UTF-8")
         except AttributeError:
             print "Error in UTF-8 hack"
+        
+        multiprocessing.freeze_support()
         
         pygame.mixer.pre_init(44100, -16, 2, 1024)
         pygame.init()
@@ -187,6 +190,9 @@ class GamePart(object):
         self._first = True
         self._return = {}
         self.init()
+        
+    def redraw_all(self):
+        self._first = True
         
     def change_gamepart(self, new_gp_name):
         self._topgame.change_gamepart(new_gp_name)
