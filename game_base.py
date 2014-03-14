@@ -97,9 +97,12 @@ class GameBase(object):
 
     def change_gamepart_to(self, new_gp_name):
         self._last_return = self.gamepart._stop()
+        g = self.gamepart
         self.gamepart = self.gameparts[new_gp_name]
         if self.gamepart:
             self.gamepart._start(self._last_return)
+        else:
+            g.exit()
         pygame.event.clear()
         return self.gamepart
 
@@ -182,6 +185,9 @@ class GamePart(object):
         return {}
         # Override to uninitialize gamepart
         
+    def exit(self):
+        pass
+        # Override to handle fast game exit
     
     
     def __init__(self, topgame, name):
