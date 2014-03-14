@@ -80,6 +80,7 @@ class WorkManager(object):
         self.workers = []
         self.max_workers = max_workers
         self._work = None
+        self.status = 0
         
         
     def main_loop(self):
@@ -92,7 +93,7 @@ class WorkManager(object):
         self._work = self.get_work()
         
     def stop(self):
-        self.status = 0;
+        self.status = 0
         while len(self.workers):
             self.workers.pop()
         

@@ -267,22 +267,22 @@ class Client(object):
             self.sock.close()
         except socket.error:
             pass
-        print "Socket on %s:%d closed" % (self.host, self.port)
+        print "Socket on %s:%s closed" % (self.host, self.port)
         
 
 
          
     
 class Server(object): 
-    def __init__(self, port, protocol = ExtendedProtocol): 
+    def __init__(self, port, protocol = ExtendedProtocol, *args, **kwargs): 
         self._host = ""
-        self._port = port
+        self._port = int(port)
         self._server = None
         self._clients = []
         self._running = False               
         self._protocol = protocol
                
-        self.init() # user init
+        self.init(*args, **kwargs) # user init
  
     
     def init(self):
@@ -342,7 +342,7 @@ class Server(object):
             sock, adr = self._server.accept() # Accept connection
             c = Client(sock, self._protocol)
             self._clients.append(c)
-            print "%s:%d connected." % (adr[0], adr[1])
+            print "%s:%s connected." % (adr[0], adr[1])
             self.new_client(c) # Handle new clients
         except socket.error as e:
             if e.errno != errno.EWOULDBLOCK:
