@@ -20,23 +20,31 @@ class GameBase(object):
         
         pygame.mixer.pre_init(44100, -16, 2, 1024)
         pygame.init()
-        #pygame.key.set_repeat(1, 1)
+        #pygame.key.set_repeat(1, 1)        
+        
+        self.init_pre()
+        
         self.config = self.load_config()
-        self.width = int(self.config["width"])
-        self.height = int(self.config["height"])
+        
+        self.gameparts = {}
         self.working = False
-        self.fps = int(self.config["maxfps"])
         self.keys = pygame.key.get_pressed()
         self.fpsclock = pygame.time.Clock()
-        self.caption = self.config["caption"]
-        self.fullscreen = self.config["fullscreen"] == "True"
-
-        self.gameparts = {}
         self.gamepart = self.add_gamepart("Exit", ExitGamePart)
         self.last_return = {"_from" : self.gamepart._name}
         self.gamepart._start(self.last_return)
+        
+        self.width = int(self.config["width"])
+        self.height = int(self.config["height"])
+        self.fps = int(self.config["maxfps"])
+        self.caption = self.config["caption"]
+        self.fullscreen = self.config["fullscreen"] == "True"
+        
         self.init_display()
-        self.init()
+        
+        self.init_post()
+        
+        
         #self.get_current_gamepart()._start(self._last_return)
 
     def init_display(self):
@@ -47,7 +55,10 @@ class GameBase(object):
         pygame.display.set_caption(self.caption)
         self.screen = pygame.display.get_surface()
         self.bufor = pygame.Surface((self.width, self.height), flags=pygame.HWSURFACE)
-
+        
+        self.print_text(self.width/2-80, self.height/2-10, "Loading", pygame.display.get_surface(), 50, (255,255,255), (0,0,0))
+        pygame.display.flip()
+    
 
     def print_text(self, px, py, text, bit = None, size=10, color=(0,0,0), bgcolor=(200,200,200)):
         if bit == None:
@@ -87,6 +98,7 @@ class GameBase(object):
 
     def add_gamepart(self, name, gameparttype, *args, **kwargs):
         g = gameparttype(self, name, *args, **kwargs)
+        g.init()
         self.gameparts[name] = g
         return g
 
@@ -144,9 +156,13 @@ class GameBase(object):
             return 0
 
 
-    def init(self):
+    def init_pre(self):
         pass
-        # Override to initialize game [add gameparts]
+        # Override to pre initialize game
+    
+    def init_post(self):
+        pass
+        # Override to post initialize game [add gameparts]
 
     def load_config(self):
         return {
@@ -198,7 +214,7 @@ class GamePart(object):
         self._name = name
         self._first = True
         self._return = {}
-        self.init()
+        #self.init()
         
     def redraw_all(self):
         self._first = True

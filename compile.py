@@ -56,7 +56,7 @@ class pygame2exe(py2exe.build_exe.py2exe): #This hack make sure that pygame defa
             try:
                 m = Module("pygame", dll)
                 m.__pydfile__ = ".".join(dll.split(".")[:-1]) + ".pyd"
-                extensions.append(m)
+                #extensions.append(m)
             except Exception:
                 print "Warning, couldn't load", dll
 

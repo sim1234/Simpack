@@ -105,7 +105,8 @@ class Protocol(BaseProtocol):
         except IndexError: 
             pass
         print "Bad message: '%s'." % msg
-        
+
+"""
 class ExtendedProtocol(Protocol):
     reserved = ("_P1", "_P2")
     
@@ -127,7 +128,7 @@ class ExtendedProtocol(Protocol):
         self.send(self.reserved[0], time.time(), False)
         return self.ping_
         
-
+"""
 
 class LanSearch(WorkManager):
     def __init__(self, *ports):
@@ -168,7 +169,7 @@ class LanSearch(WorkManager):
 
 class Client(object):
     
-    def __init__(self, sock = None, protocol = ExtendedProtocol, timeout = 10):
+    def __init__(self, sock = None, protocol = Protocol, timeout = 10):
         self.max_data_recv = 2**12
         
         self.running, self.host, self.port = False, None, None
@@ -274,7 +275,7 @@ class Client(object):
          
     
 class Server(object): 
-    def __init__(self, port, protocol = ExtendedProtocol, *args, **kwargs): 
+    def __init__(self, port, protocol = Protocol, *args, **kwargs): 
         self._host = ""
         self._port = int(port)
         self._server = None
