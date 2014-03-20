@@ -120,6 +120,7 @@ class GameBase(object):
             self.frame()
         pygame.mixer.fadeout(100) # Fade out sound in 0.1s and quit in 0.2s
         pygame.time.wait(200)     #
+        pygame.quit()
 
     def main_loop(self, debug = False):
         if debug:
@@ -129,12 +130,14 @@ class GameBase(object):
                 return 0
             except (SystemExit, KeyboardInterrupt):
                 print "Forced Exit."
+                pygame.quit()
                 return 1
             except:
                 import sys
                 import traceback
                 print >> sys.stderr, "Error in game:"
                 traceback.print_exc()
+                pygame.quit()
                 return 2
         else:
             self._main_loop()

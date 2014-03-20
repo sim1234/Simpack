@@ -25,6 +25,9 @@ class NormalProvider(object):
 
     def join(self, *src):
         return os.path.join(self.top, *src)
+    
+    def split(self, path):
+        return path.split("\\")
 
     def get_name(self, folder, *names):
         return self.join(self.datas[folder], *names)
@@ -79,6 +82,9 @@ class FrozenProvider(NormalProvider):
 
     def join(self, *src):
         return NormalProvider.join(self, *src).replace("\\", "/")
+    
+    def split(self, path):
+        return path.split("/")
 
     def raw_open(self, path, mode="rb"):
         return StringIO.StringIO(self.archive.open(path).read())

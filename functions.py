@@ -177,3 +177,26 @@ class SubProces(threading.Thread):
                         time.sleep(sleep)
                 return self.result
 
+
+
+class Logger(object):
+    def __init__(self, filename, std = None):
+        if std is None:
+            std = sys.stdout
+        self.terminal = std
+        self.log = open(filename, "w", 0)
+        self._lc = "\n"
+
+    def write(self, message):
+        self.terminal.write(message)
+        if self._lc == "\n":
+            self.log.write(fill_to("%f" % time.clock(), 15, " ") + ": ")
+        if message:
+            self._lc = message[-1]
+        self.log.write(message)
+        
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+
+

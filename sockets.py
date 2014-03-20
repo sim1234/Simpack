@@ -366,7 +366,7 @@ class Server(object):
         while self._running:
             self._main_loop()
 
-        self._server.shutdown(socket.SHUT_RDWR)
+        #self._server.shutdown(socket.SHUT_RDWR)
         self._server.close()
         for c in self._clients:
             c.close()
