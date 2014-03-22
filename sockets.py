@@ -7,6 +7,7 @@ import bz2
 import errno
 #import select
 #import cPickle as pickle
+import collections
 from simpack.functions import fill_to
 from simpack.request import WorkManager
 
@@ -132,7 +133,7 @@ class ExtendedProtocol(Protocol):
 
 class LanSearch(WorkManager):
     def __init__(self, *ports):
-        WorkManager.__init__(self, 64)
+        WorkManager.__init__(self, 250)
         self.ports = ports
         
     def start(self):
@@ -184,7 +185,7 @@ class Client(object):
         
         self.data_in = ""
         self.data_out = ""
-        self.messages = []
+        self.messages = collections.deque()
         
         self.protocol = protocol(self)
         
@@ -223,7 +224,8 @@ class Client(object):
     
     def get_messages(self):
         while len(self.messages):
-            yield self.messages.pop(0)
+            #yield self.messages.pop(0)
+            yield self.messages.popleft()
             
 
     def processIO(self):

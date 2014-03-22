@@ -10,12 +10,12 @@ import os
 import shutil
 import re
 
-import pygame
 
-pygame.font.init() # For some reason
+#pygame.font.init() # For some reason
 
 
 def find_pygame_dlls():
+    import pygame
     dlls = []
     pygamedir = os.path.split(pygame.base.__file__)[0]
     for r,d,f in os.walk(pygamedir):
@@ -44,6 +44,7 @@ py2exe.build_exe.isSystemDLL = isSystemDLL # override the default function with 
 
 class pygame2exe(py2exe.build_exe.py2exe): #This hack make sure that pygame default font is copied: no need to modify code for specifying default font
     def copy_extensions(self, extensions):
+        import pygame
         #Get pygame default font
         pygamedir = os.path.split(pygame.base.__file__)[0]
         pygame_default_font = os.path.join(pygamedir, pygame.font.get_default_font())
@@ -62,65 +63,62 @@ class pygame2exe(py2exe.build_exe.py2exe): #This hack make sure that pygame defa
 
         py2exe.build_exe.py2exe.copy_extensions(self, extensions)
 
-class Builder:
+class Builder(object):
     def __init__(self):
-        #Name of starting .py
-        self.script = "main.py"
+        # To find more info visit:
+        # http://www.py2exe.org/index.cgi/ListOfOptions
+        # http://docs.python.org/2/distutils/apiref.html
 
-        #Name of program
+        # Project
         self.project_name = ""
-
-        #Project url
+        self.project_description = ""
         self.project_url = ""
-
-        #Version of program
         self.project_version = ""
-
-        #License of the program
         self.license = ""
+        self.project_long_description = ""
 
-        #Auhor of program
+        # Auhor of program
         self.author_name = ""
         self.author_email = ""
         self.copyright = ""
 
-        #Description
-        self.project_description = ""
+        # Destination dir
+        self.dist_dir = "dist"    # Directory in which to build the final files
+        self.extra_datas = []     # Extra files/dirs copied to dist_dir
 
-        #Icon file (None will use pygame default icon)
-        self.icon_file = None
-
-        #Extra files/dirs copied to game
-        self.extra_datas = []
-
-        #Extra/excludes python modules
-        self.extra_modules = []
-        self.exclude_modules = []
-
-        #DLL Excludes
-        self.exclude_dll = []
-        #python scripts (strings) to be included, seperated by a comma
-        self.extra_scripts = []
-
-        #Zip file name (None will bundle files in exe instead of zip file)
-        self.zipfile_name = None
+        # Includes & excludes
+        self.extra_modules = []   # List of module names to include
+        self.exclude_modules = [] # List of module names to exclude
+        self.ignore_modules = []  # List of modules to ignore if they are not found
+        self.extra_packages = []  # list of packages to include with subpackages
+        self.exclude_dll = []     # List of dlls to exclude
+        self.typelibs = []        # List of gen_py generated typelibs to include
         
-        #Destination dir
-        self.dist = "dist" # Don't change
+        # Archive
+        self.bundle_files = 1     # Bundle dlls in the zipfile or the exe. { 3: don't bundle, 2: bundle everything but the Python interpreter, 1: bundle everything.
+        self.zipfile_name = None  # Name of shared zipfile to generate. If zipfile is set to None, the files will be bundled within the executable.
+        self.compressed = True    # Create a compressed zipfile
+        self.skip_archive = False # Do not place Python bytecode files in an archive, put them directly in the file system
         
-        #Optimization level [0, 1, 2]
-        self.optimize = 0
+        # Other
+        self.optimize = 0         # Code optimization level [0, 1, 2]
+        self.unbuffered = False   # Unbuffered stdout
+        self.xref = False         # Show a module cross reference
+        self.ascii = False        # Do not automatically include encodings and codecs
+        self.custom_boot = None   # Python file that will be run when setting up the runtime environment
+        self.icon_file = None     # Icon file
         
-        #Bundle files
-        self.bundle_files = 1
+        # Scripts
+        self.console = [] # See add_console
+        self.windows = [] # See add_windows
+        self.service = [] # See add_service
+        self.com_server = [] # See add_com_server
+        self.ctypes_com_server = [] # See add_ctypes_com_server
         
-        self.compressed = True
-        
-        self.exe_name = self.script.rsplit(".", 1)[0] + ".exe"
+        self.to_rename = [] # See rename
         
         
         self.setup()
-        self._exe_name = self.script.rsplit(".", 1)[0] + ".exe"
 
     def setup(self): # Setup your own parameters
         pass
@@ -130,6 +128,40 @@ class Builder:
     
     def postbuild(self): # Customize build process
         raw_input("Press any key to quit")
+        
+    def add_console(self, script, rename):
+        r = { 'script': script, 'copyright': self.copyright, }
+        if rename:
+            self.rename(script.rsplit(".", 1)[0] + ".exe", rename) 
+        self.console.append(r)
+    
+    def add_windows(self, script, rename = None, *icons):
+        r = { 'script': script, 'copyright': self.copyright, }
+        i = []
+        for icon in icons:
+            i.append((0, icon))
+        if i:
+            r['icon_resources'] = i
+        if rename:
+            self.rename(script.rsplit(".", 1)[0] + ".exe", rename)
+        self.windows.append(r)
+
+    
+    def add_service(self, s): # TO DO
+        self.service.append(s)
+    
+    def add_com_server(self, s): # TO DO
+        self.com_server.append(s)
+    
+    def add_ctypes_com_server(self, s): # TO DO
+        self.ctypes_com_server.append(s)
+    
+    def rename(self, name, to):
+        self.to_rename.append((name, to))
+    
+    def add_popular_excludes(self):
+        self.exclude_modules += ['Tkinter', 'numpy', '_ssl', 'pyreadline', 'difflib', 'doctest', 'optparse', 'unittest']
+        self.exclude_dll += ['w9xpopen.exe', 'tk85.dll', 'tcl85.dll']
 
     ## Code from DistUtils tutorial at http://wiki.python.org/moin/Distutils/Tutorial
     ## Originally borrowed from wxPython's setup and config files
@@ -164,78 +196,82 @@ class Builder:
                         srcdir,
                         [os.path.basename(f) for f in glob.glob(self._opj(srcdir, '*'))])
         return file_list
+    
+    def build_config(self):
+        options = {
+                    'unbuffered' : self.unbuffered,
+                    'optimize' : self.optimize,
+                    'includes' : self.extra_modules,
+                    'packages' : self.extra_packages,
+                    'ignores' : self.ignore_modules,
+                    'excludes' : self.exclude_modules,
+                    'dll_excludes' : self.exclude_dll,
+                    'dist_dir' : self.dist_dir,
+                    'typelibs' : self.typelibs,
+                    'compressed' : self.compressed,
+                    'xref' : self.xref,
+                    'bundle_files' : self.bundle_files,
+                    'skip_archive' : self.skip_archive,
+                    }
+        args = {
+                'cmdclass' : {'py2exe': pygame2exe},
+                'version' : self.project_version,
+                'description' : self.project_description,
+                'long_description' : self.project_long_description,
+                'name' : self.project_name,
+                'url' : self.project_url,
+                'author' : self.author_name,
+                'author_email' : self.author_email,
+                'license' : self.license,
+                'zipfile' : self.zipfile_name,
+                'data_files' : self.extra_datas_,
+                
+                'options' : {'py2exe' : options},
+                
+                'console' : self.console,
+                'windows' : self.windows,
+                'service' : self.service,
+                'com_server' : self.com_server,
+                'ctypes_com_server' : self.ctypes_com_server,
+                }
+        return args
 
     def run(self):
         if "py2exe" not in sys.argv: # Make sure py2exe will run
             sys.argv.append("py2exe")
             
-        if os.path.isdir(self.dist): #Erase previous destination dir
-            print "Removing", os.path.abspath(self.dist)
-            shutil.rmtree(self.dist)
+        if os.path.isdir(self.dist_dir): #Erase previous destination dir
+            print "Removing", os.path.abspath(self.dist_dir)
+            shutil.rmtree(self.dist_dir)
         
         self.prebuild()
         
-        #Use the default pygame icon, if none given
-        if self.icon_file == None:
-            path = os.path.split(pygame.__file__)[0]
-            self.icon_file = os.path.join(path, 'pygame.ico')
-
         #List all data files to add
-        extra_datas = []
+        self.extra_datas_ = []
         for data in self.extra_datas:
             if os.path.isdir(data):
-                extra_datas.extend(self._find_data_files(data, '*'))
+                self.extra_datas_.extend(self._find_data_files(data, '*'))
             else:
-                extra_datas.append(('.', [data]))
-        extra_datas.append(('.', glob.glob('*.dll')))
-        #extra_datas.append(('.', PYGAME_DLLS))
-        self.extra_modules += [ "pygame.font", "pygame"]#, "pygame._view", "pygame.mixer"]
+                self.extra_datas_.append(('.', [data]))
+        #self.extra_datas_.append(('.', glob.glob('*.dll')))
+        #self.extra_datas_.append(('.', PYGAME_DLLS))
+        #self.extra_modules += [ "pygame.font", "pygame"]#, "pygame._view", "pygame.mixer"]
 
-        setup(
-            cmdclass = {'py2exe': pygame2exe},
-            version = self.project_version,
-            description = self.project_description,
-            name = self.project_name,
-            url = self.project_url,
-            author = self.author_name,
-            author_email = self.author_email,
-            license = self.license,
-
-            # targets to build
-            windows = [{
-                        'script': self.script,
-                        'icon_resources': [(0, self.icon_file)],
-                        'copyright': self.copyright
-                        }],
-            options = {
-                        'py2exe': {
-                                   'optimize': self.optimize,
-                                   'bundle_files': self.bundle_files,
-                                   'compressed': self.compressed, 
-                                   'excludes': self.exclude_modules,
-                                   'packages': self.extra_modules, 
-                                   'dll_excludes': self.exclude_dll,
-                                   'includes': self.extra_scripts,
-                                   'dist_dir': self.dist,
-                                   } 
-                        },
-            zipfile = self.zipfile_name,
-            data_files = extra_datas,
-            )
-
-        
+        setup(**self.build_config()) # Build config and run setup
 
         if os.path.isdir('build'): #Clean up build dir
             print "Removing", os.path.abspath("build")
             shutil.rmtree('build')
         
-        if self.exe_name != self._exe_name:
-            print "Renaming", self._exe_name, "to", self.exe_name 
-            os.rename("%s/%s" % (self.dist, self._exe_name), "%s/%s" % (self.dist, self.exe_name))
-            
-        print "Build finished successfully!" 
-            
+        for f, t in self.to_rename:
+            print "Renaming", f, "to", t
+            os.rename("%s/%s" % (self.dist_dir, f), "%s/%s" % (self.dist_dir, t))
+        
         self.postbuild()
+            
+        print "Build finished successfully!"
+            
+        
 
 if __name__ == '__main__':
     Builder().run()

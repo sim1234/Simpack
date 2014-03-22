@@ -2,22 +2,14 @@
 
 import sys
 import pygame
-import multiprocessing
-from simpack.functions import python_frozen, tuc, Controls, load_config
+
+from simpack.functions import tuc
 
 
 class GameBase(object):
     CHANGE_GAMEPART_EVENT_ID = 27
 
     def __init__(self):
-        try:
-            if python_frozen(): # UTF-8 hack
-                sys.setdefaultencoding("UTF-8")
-        except AttributeError:
-            print "Error in UTF-8 hack"
-        
-        multiprocessing.freeze_support()
-        
         pygame.mixer.pre_init(44100, -16, 2, 1024)
         pygame.init()
         #pygame.key.set_repeat(1, 1)        
@@ -145,7 +137,6 @@ class GameBase(object):
                 pygame.quit()
                 return 1
             except:
-                import sys
                 import traceback
                 print >> sys.stderr, "Error in game:"
                 traceback.print_exc()
@@ -154,6 +145,10 @@ class GameBase(object):
         else:
             self._main_loop()
             return 0
+        
+    def advanced_main_loop(self, debug = False, log = ""):
+        r = self.main_loop(debug) # Run game
+        sys.exit(r) # Exit with right code
 
 
     def init_pre(self):

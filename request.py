@@ -3,6 +3,7 @@
 import urllib2
 import urllib
 import Cookie
+#import collections
 from simpack.functions import SubProces     
                 
 class NoRedirection(urllib2.HTTPErrorProcessor):
@@ -77,7 +78,7 @@ class CookieHandler(object):
 
 class WorkManager(object):
     def __init__(self, max_workers = 4):
-        self.workers = []
+        self.workers = [] # collections.deque()
         self.max_workers = max_workers
         self._work = None
         self.status = 0

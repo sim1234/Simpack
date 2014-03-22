@@ -8,12 +8,22 @@ import pygame
 import ctypes
 import StringIO
 import threading
-
+import multiprocessing
 
 
 def python_frozen():
     return hasattr(sys, "frozen")
     
+def install_hacks(log = ""):
+    multiprocessing.freeze_support() # Freeze support
+    if log: # Log
+        sys.stdout = sys.stderr = Logger(log)
+    try: # UTF-8 hack
+        if python_frozen():
+            sys.setdefaultencoding("UTF-8")
+            print "UTF-8 hack installed."
+    except AttributeError:
+        print "UTF-8 hack not installed!"
     
 def alert(msg = "Alert!", title = "Alert", a = 0, b = 0x00001000):
         #ctypes.windll.user32.MessageBoxA(a, msg, title, b)
@@ -185,6 +195,7 @@ class Logger(object):
             std = sys.stdout
         self.terminal = std
         self.log = open(filename, "w", 0)
+        self.log.write(time.ctime() + "\n")
         self._lc = "\n"
 
     def write(self, message):
