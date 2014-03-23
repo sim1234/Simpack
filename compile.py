@@ -140,7 +140,7 @@ class Builder(object):
         i = []
         for icon in icons:
             i.append((0, icon))
-        if i:
+        if len(i):
             r['icon_resources'] = i
         if rename:
             self.rename(script.rsplit(".", 1)[0] + ".exe", rename)
@@ -162,6 +162,9 @@ class Builder(object):
     def add_popular_excludes(self):
         self.exclude_modules += ['Tkinter', 'numpy', '_ssl', 'pyreadline', 'difflib', 'doctest', 'optparse', 'unittest']
         self.exclude_dll += ['w9xpopen.exe', 'tk85.dll', 'tcl85.dll']
+    
+    def add_pygame_includes(self):
+        self.extra_modules += ["pygame", "pygame._view"]
 
     ## Code from DistUtils tutorial at http://wiki.python.org/moin/Distutils/Tutorial
     ## Originally borrowed from wxPython's setup and config files
@@ -255,7 +258,7 @@ class Builder(object):
                 self.extra_datas_.append(('.', [data]))
         #self.extra_datas_.append(('.', glob.glob('*.dll')))
         #self.extra_datas_.append(('.', PYGAME_DLLS))
-        #self.extra_modules += [ "pygame.font", "pygame"]#, "pygame._view", "pygame.mixer"]
+        #self.extra_modules += [ "pygame", "pygame.font", "pygame._view", "pygame.mixer"]
 
         setup(**self.build_config()) # Build config and run setup
 
