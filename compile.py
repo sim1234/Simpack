@@ -8,60 +8,27 @@ import fnmatch
 import sys
 import os
 import shutil
-import re
-
-
-#pygame.font.init() # For some reason
+#import re
 
 
 def find_pygame_dlls():
     import pygame
-    dlls = []
+    #dlls = []
     pygamedir = os.path.split(pygame.base.__file__)[0]
+    pygame_default_font = os.path.join(pygamedir, pygame.font.get_default_font())
+    yield Module("pygame.font", pygame_default_font)
+
     for r,d,f in os.walk(pygamedir):
         for files in f:
             if files.lower().endswith(".dll"):
-                dlls.append(os.path.join(r, files))
-    #l = os.path.join(pygamedir, "libogg-0.dll")
-    #if not l in dlls:
-    #    dlls.append(l)
-    return dlls
-
-PYGAME_DLLS = find_pygame_dlls()
-
-#hack which fixes the pygame mixer and pygame font
-origIsSystemDLL = py2exe.build_exe.isSystemDLL # save the orginal before we edit it
-def isSystemDLL(pathname):
-    # checks if the freetype and ogg dll files are being included
-
-    if (pathname in PYGAME_DLLS) or re.match(".*python\d\d\.dll$", pathname):#("libfreetype-6.dll", "libogg-0.dll", "msvcp71.dll", "dwmapi.dll", "SDL_ttf.dll"):#, "SDL_ttf.dll"):
-        return 0
-    elif pathname.lower().startswith("c:\\windows"):
-        return 1
-    return origIsSystemDLL(pathname) # return the orginal function
-py2exe.build_exe.isSystemDLL = isSystemDLL # override the default function with this one
-
-
-class pygame2exe(py2exe.build_exe.py2exe): #This hack make sure that pygame default font is copied: no need to modify code for specifying default font
-    def copy_extensions(self, extensions):
-        import pygame
-        #Get pygame default font
-        pygamedir = os.path.split(pygame.base.__file__)[0]
-        pygame_default_font = os.path.join(pygamedir, pygame.font.get_default_font())
-
-        #Add font to list of extension to be copied
-        extensions.append(Module("pygame.font", pygame_default_font))
-
-        # Copy all pygame dll's
-        for dll in PYGAME_DLLS:
-            try:
-                m = Module("pygame", dll)
-                m.__pydfile__ = ".".join(dll.split(".")[:-1]) + ".pyd"
-                #extensions.append(m)
-            except Exception:
-                print "Warning, couldn't load", dll
-
-        py2exe.build_exe.py2exe.copy_extensions(self, extensions)
+                dll = os.path.join(r, files)
+                try:
+                    m = Module("pygame", dll)
+                    m.__pydfile__ = ".".join(dll.split(".")[:-1]) + ".pyd"
+                    yield m
+                except Exception:
+                    print "Warning, couldn't load", dll
+                
 
 class Builder(object):
     def __init__(self):
@@ -83,30 +50,34 @@ class Builder(object):
         self.copyright = ""
 
         # Destination dir
-        self.dist_dir = "dist"    # Directory in which to build the final files
-        self.extra_datas = []     # Extra files/dirs copied to dist_dir
+        self.dist_dir = "dist"     # Directory in which to build the final files
+        self.extra_datas = []      # Extra files/dirs copied to dist_dir
 
         # Includes & excludes
-        self.extra_modules = []   # List of module names to include
-        self.exclude_modules = [] # List of module names to exclude
-        self.ignore_modules = []  # List of modules to ignore if they are not found
-        self.extra_packages = []  # list of packages to include with subpackages
-        self.exclude_dll = []     # List of dlls to exclude
-        self.typelibs = []        # List of gen_py generated typelibs to include
+        self.extra_modules = []    # List of module names to include
+        self.exclude_modules = []  # List of module names to exclude
+        self.ignore_modules = []   # List of modules to ignore if they are not found
+        self.extra_packages = []   # list of packages to include with subpackages
+        self.exclude_dll = []      # List of dlls to exclude
+        self.typelibs = []         # List of gen_py generated typelibs to include
+        self.extra_extensions = [] # List of Module objects
         
         # Archive
-        self.bundle_files = 1     # Bundle dlls in the zipfile or the exe. { 3: don't bundle, 2: bundle everything but the Python interpreter, 1: bundle everything.
-        self.zipfile_name = None  # Name of shared zipfile to generate. If zipfile is set to None, the files will be bundled within the executable.
-        self.compressed = True    # Create a compressed zipfile
-        self.skip_archive = False # Do not place Python bytecode files in an archive, put them directly in the file system
+        self.bundle_files = 1      # Bundle dlls in the zipfile or the exe. { 3: don't bundle, 2: bundle everything but the Python interpreter, 1: bundle everything.
+        self.zipfile_name = None   # Name of shared zipfile to generate. If zipfile is set to None, the files will be bundled within the executable.
+        self.compressed = True     # Create a compressed zipfile
+        self.skip_archive = False  # Do not place Python bytecode files in an archive, put them directly in the file system
         
         # Other
-        self.optimize = 0         # Code optimization level [0, 1, 2]
-        self.unbuffered = False   # Unbuffered stdout
-        self.xref = False         # Show a module cross reference
-        self.ascii = False        # Do not automatically include encodings and codecs
-        self.custom_boot = None   # Python file that will be run when setting up the runtime environment
-        self.icon_file = None     # Icon file
+        self.optimize = 0          # Code optimization level [0, 1, 2]
+        self.unbuffered = False    # Unbuffered stdout
+        self.xref = False          # Show a module cross reference
+        self.ascii = False         # Do not automatically include encodings and codecs
+        self.custom_boot = None    # Python file that will be run when setting up the runtime environment
+        
+        
+        # CMD class
+        self.cmd_class = py2exe.build_exe.py2exe
         
         # Scripts
         self.console = [] # See add_console
@@ -165,7 +136,15 @@ class Builder(object):
     
     def add_pygame_includes(self):
         self.extra_modules += ["pygame", "pygame._view"]
+        self.extra_extensions.extend(find_pygame_dlls())
 
+    
+    def _decorate_copy_extensions(self, f):
+        def copy_extensions(s, extensions):
+            extensions.extend(self.extra_extensions)
+            f(s, extensions)
+        return copy_extensions
+    
     ## Code from DistUtils tutorial at http://wiki.python.org/moin/Distutils/Tutorial
     ## Originally borrowed from wxPython's setup and config files
     def _opj(self, *args):
@@ -217,7 +196,7 @@ class Builder(object):
                     'skip_archive' : self.skip_archive,
                     }
         args = {
-                'cmdclass' : {'py2exe': pygame2exe},
+                'cmdclass' : {'py2exe' : self.cmd_class},
                 'version' : self.project_version,
                 'description' : self.project_description,
                 'long_description' : self.project_long_description,
@@ -256,12 +235,11 @@ class Builder(object):
                 self.extra_datas_.extend(self._find_data_files(data, '*'))
             else:
                 self.extra_datas_.append(('.', [data]))
-        #self.extra_datas_.append(('.', glob.glob('*.dll')))
-        #self.extra_datas_.append(('.', PYGAME_DLLS))
-        #self.extra_modules += [ "pygame", "pygame.font", "pygame._view", "pygame.mixer"]
-
+        
+        self.cmd_class.copy_extensions = self._decorate_copy_extensions(self.cmd_class.copy_extensions) # Copy own extensions
         setup(**self.build_config()) # Build config and run setup
-
+        
+        print " "
         if os.path.isdir('build'): #Clean up build dir
             print "Removing", os.path.abspath("build")
             shutil.rmtree('build')

@@ -2,7 +2,7 @@
 
 import time
 import math
-import pygame
+
 
 
 def iterate_over_PhisicsObjects(lista):
@@ -192,92 +192,97 @@ class PhisicalObject(PhisicsObject):
         return "PhisicalObject in (%f, %f) with speed (%f, %f)" % (self.px, self.py, self.vx, self.vy)
 
 
-class TexturedObject(PhisicalObject):
-    def __init__(self, px, py, vx, vy, angle, image):
-        PhisicalObject.__init__(self, px, py, vx, vy)
-        self.image = image
-        self.angle = angle
-        self._image = pygame.Surface(image.get_size(), flags=pygame.HWSURFACE | pygame.SRCALPHA)
-        self._image.blit(image, (0,0))
-        self.make_image()
+try:
+    import pygame
+    
 
-    def make_image(self):
-        self.image = pygame.transform.rotate(self._image, math.degrees(self.angle))
-        self.mask = pygame.mask.from_surface(self.image)
-        self.image_w, self.image_h = self.image.get_size()
-
-    def get_image_pos(self):
-        return int(self.px - self.image_w / 2.0), int(self.py - self.image_h / 2.0)
-
-
-    def collision_point_gen(self, mask, x = 10):
-        pkt = mask.overlap(self.mask, self.get_image_pos())
-        while pkt and x:
-            yield pkt
-            x -= 1
+    class TexturedObject(PhisicalObject):
+        def __init__(self, px, py, vx, vy, angle, image):
+            PhisicalObject.__init__(self, px, py, vx, vy)
+            self.image = image
+            self.angle = angle
+            self._image = pygame.Surface(image.get_size(), flags=pygame.HWSURFACE | pygame.SRCALPHA)
+            self._image.blit(image, (0,0))
+            self.make_image()
+    
+        def make_image(self):
+            self.image = pygame.transform.rotate(self._image, math.degrees(self.angle))
+            self.mask = pygame.mask.from_surface(self.image)
+            self.image_w, self.image_h = self.image.get_size()
+    
+        def get_image_pos(self):
+            return int(self.px - self.image_w / 2.0), int(self.py - self.image_h / 2.0)
+    
+    
+        def collision_point_gen(self, mask, x = 10):
             pkt = mask.overlap(self.mask, self.get_image_pos())
+            while pkt and x:
+                yield pkt
+                x -= 1
+                pkt = mask.overlap(self.mask, self.get_image_pos())
+    
+    
+        def collide_at(self, px, py):
+            a = math.atan2(py, px)
+            fx, fy = math.cos(a), math.sin(a)
+            self.px -= fx
+            self.py -= fy
+            self.vx -= fx
+            self.vy -= fy
+            self.vx *= abs(fx) - 0.1
+            self.vy *= abs(fy) - 0.1
+            return math.hypot(self.vx, self.vy)
+    
+        def collide_bullets(self, bullets):
+            px, py = self.get_image_pos()
+            for b in bullets:
+                cp = (int(b.px - px), int(b.py - py))
+                try:
+                    if self.mask.get_at(cp):
+                        b.delete()
+                        yield b
+                except IndexError:
+                    pass
+    
+        def collide_TO(self, TO):
+            spx, spy = TO.get_image_pos()
+            px, py = self.get_image_pos()
+            pkt = self.mask.overlap(TO.mask, (spx - px, spy - py))
+            if pkt:
+                pxx, pyy = pkt[0] - self.image_w / 2, pkt[1] - self.image_h / 2
+                vw = math.hypot(self.vx - TO.vx, self.vy - TO.vy)
+                self.collide_at(pxx, pyy)
+                self.crash((pxx, pyy), vw)
+                pxx, pyy = pxx + px - spx, pyy + py - spy
+                #print pkt, pxx, pyy
+                TO.collide_at(pxx, pyy)
+                self.crash((pxx, pyy), vw)
+                return vw
+    
+        def boom(self, cp, b):
+            pass
+    
+        def crash(self, cp, v):
+            pass
+    
+        def my_detach(self, typ, dx, dy, dvx, dvy, *args, **kwargs):
+            if typ is None:
+                typ = type(self)
+            p, pa = math.hypot(dx, dy), math.atan2(dy, dx) - self.angle
+            v, va = math.hypot(dvx, dvy), math.atan2(dvy, dvx) - self.angle
+            dx, dy = p * math.cos(pa), p * math.sin(pa)
+            dvx, dvy = v * math.cos(va), v * math.sin(va)
+            return typ(self.px + dx, self.py + dy, self.vx + dvx, self.vy + dvy, *args, **kwargs)
+    
+        def place_at(self, px, py, vx = 0, vy = 0, angle = 0):
+            self.px, self.py = px, py
+            self.vx, self.vy = vx, vy
+            self.angle = angle
+            self.make_image()
+    
+        def draw(self, bufor):
+            bufor.blit(self.image, self.get_image_pos())
 
-
-    def collide_at(self, px, py):
-        a = math.atan2(py, px)
-        fx, fy = math.cos(a), math.sin(a)
-        self.px -= fx
-        self.py -= fy
-        self.vx -= fx
-        self.vy -= fy
-        self.vx *= abs(fx) - 0.1
-        self.vy *= abs(fy) - 0.1
-        return math.hypot(self.vx, self.vy)
-
-    def collide_bullets(self, bullets):
-        px, py = self.get_image_pos()
-        for b in bullets:
-            cp = (int(b.px - px), int(b.py - py))
-            try:
-                if self.mask.get_at(cp):
-                    b.delete()
-                    yield b
-            except IndexError:
-                pass
-
-    def collide_TO(self, TO):
-        spx, spy = TO.get_image_pos()
-        px, py = self.get_image_pos()
-        pkt = self.mask.overlap(TO.mask, (spx - px, spy - py))
-        if pkt:
-            pxx, pyy = pkt[0] - self.image_w / 2, pkt[1] - self.image_h / 2
-            vw = math.hypot(self.vx - TO.vx, self.vy - TO.vy)
-            self.collide_at(pxx, pyy)
-            self.crash((pxx, pyy), vw)
-            pxx, pyy = pxx + px - spx, pyy + py - spy
-            #print pkt, pxx, pyy
-            TO.collide_at(pxx, pyy)
-            self.crash((pxx, pyy), vw)
-            return vw
-
-    def boom(self, cp, b):
-        pass
-
-    def crash(self, cp, v):
-        pass
-
-    def my_detach(self, typ, dx, dy, dvx, dvy, *args, **kwargs):
-        if typ is None:
-            typ = type(self)
-        p, pa = math.hypot(dx, dy), math.atan2(dy, dx) - self.angle
-        v, va = math.hypot(dvx, dvy), math.atan2(dvy, dvx) - self.angle
-        dx, dy = p * math.cos(pa), p * math.sin(pa)
-        dvx, dvy = v * math.cos(va), v * math.sin(va)
-        return typ(self.px + dx, self.py + dy, self.vx + dvx, self.vy + dvy, *args, **kwargs)
-
-    def place_at(self, px, py, vx = 0, vy = 0, angle = 0):
-        self.px, self.py = px, py
-        self.vx, self.vy = vx, vy
-        self.angle = angle
-        self.make_image()
-
-    def draw(self, bufor):
-        bufor.blit(self.image, self.get_image_pos())
-
-
+except ImportError:
+    pass
 

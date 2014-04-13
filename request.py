@@ -3,6 +3,7 @@
 import urllib2
 import urllib
 import Cookie
+import HTMLParser
 #import collections
 from simpack.functions import SubProces     
                 
@@ -129,3 +130,82 @@ class WorkManager(object):
     def end(self):
         pass
     
+    
+class HTMlTag(object):
+    indent = "  "
+    
+    def __init__(self, name = "", data = "", args = []):
+        self.sub = []
+        self.name = name
+        self.data = data
+        self.args = args
+    
+    def __str__(self,):
+        r = "<%s" % self.name
+        for k, v in self.args:
+            r += ' %s="%s"' % (k, v)
+        r += ">"
+        if self.sub:
+            r += "\n"
+            if self.data:
+                r += self.indent + self.data + "\n"
+        else:
+            if self.data:
+                r += self.data
+        for c in self.sub:
+            r += self.indent + c.__str__().replace("\n", "\n" + self.indent) + "\n"
+        r += "</%s>" % self.name
+        return r
+    
+    def __repr__(self):
+        #return 'HTMLTag("%s", "%s", %s)' % (self.name, self.data, self.args)
+        return 'HTMLTag("%s")' % self.name
+    
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self.sub[key]
+        else:
+            l = []
+            for t in self.sub:
+                if t.name == key:
+                    l.append(t)
+            return l
+    
+    def search(self, name):
+        for t in self.sub:
+            if t.name == name:
+                yield t
+            for tt in t.search(name):
+                yield tt
+    
+    
+class MyParser(HTMLParser.HTMLParser):
+    def __init__(self):
+        HTMLParser.HTMLParser.__init__(self)
+        self.stack = []
+        self.top = []
+    
+    def handle_starttag(self, tag, attrs):
+        t = HTMlTag(tag, "", attrs)
+        if len(self.stack):
+            self.stack[-1].sub.append(t)
+        else:
+            self.top.append(t)
+        self.stack.append(t)
+        
+    def handle_endtag(self, tag):
+        self.stack.pop(-1)
+        #print("Encountered an end tag :", tag)
+        
+    def handle_data(self, data):
+        self.stack[-1].data = data
+
+
+if __name__ == "__main__":
+    m = MyParser()
+    m.feed('<html a="b"><head><title>Test</title></head><body>ASDF<h1>Parse me!</h1><h1>Parse me 2!</h1><h1>Parse me 3!<h1>Parse me 4!</h1></h1></body></html>')
+    print m.top[0]
+    print m.top[0][1]["h1"]
+    print list(m.top[0].search("h1"))
+
+

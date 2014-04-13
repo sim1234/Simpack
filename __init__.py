@@ -21,13 +21,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 #__all__ = [""]
-import arduino
-import compile
-import dataprovider
-import functions
-import game_base
-import gui
-import phisics
-import request
-import sockets
+#import arduino
+#import compile
+#import dataprovider
+#import functions
+#import game_base
+#import gui
+#import phisics
+#import request
+#import sockets
 

@@ -4,33 +4,16 @@ import re
 import sys
 import math
 import time
-import pygame
-import ctypes
+#import pygame
+#import ctypes
 import StringIO
 import threading
-import multiprocessing
+#import multiprocessing
 
 
 def python_frozen():
     return hasattr(sys, "frozen")
     
-def install_hacks(log = ""):
-    multiprocessing.freeze_support() # Freeze support
-    if log: # Log
-        sys.stdout = sys.stderr = Logger(log)
-    try: # UTF-8 hack
-        if python_frozen():
-            sys.setdefaultencoding("UTF-8")
-            print "UTF-8 hack installed."
-    except AttributeError:
-        print "UTF-8 hack not installed!"
-    
-def alert(msg = "Alert!", title = "Alert", a = 0, b = 0x00001000):
-        #ctypes.windll.user32.MessageBoxA(a, msg, title, b)
-        return SubProces(ctypes.windll.user32.MessageBoxA, 0, 0, a, msg, title, b)
-    
-
-        
 
 def va2xy(v, a):
     return v * math.cos(a), v * math.sin(a)
@@ -86,14 +69,6 @@ def color_from_str(s):
 def invert_color(c):
     return tuple(map(lambda x: 255 - x, c))
 
-
-def key_name(key):
-    k = pygame.key.name(key)
-    return k[0].upper() + k[1:].lower()
-
-                    
-def load_image(content, name=".jpg"):
-    return pygame.image.load(StringIO.StringIO(content), name)
 
 def load_ld(content):
     return eval(content)
@@ -210,4 +185,49 @@ class Logger(object):
         self.terminal.flush()
         self.log.flush()
 
+
+
+try:
+    import ctypes
+    
+    def alert(msg = "Alert!", title = "Alert", a = 0, b = 0x00001000):
+        #ctypes.windll.user32.MessageBoxA(a, msg, title, b)
+        return SubProces(ctypes.windll.user32.MessageBoxA, 0, 0, a, msg, title, b)
+
+except ImportError:
+    pass
+
+
+
+try:
+    import pygame
+    
+    def key_name(key):
+        k = pygame.key.name(key)
+        return k[0].upper() + k[1:].lower()
+                    
+    def load_image(content, name=".jpg"):
+        return pygame.image.load(StringIO.StringIO(content), name)
+    
+except ImportError:
+    pass
+
+
+
+try:
+    import multiprocessing
+    
+    def install_hacks(log = ""):
+        multiprocessing.freeze_support() # Freeze support
+        if log: # Log
+            sys.stdout = sys.stderr = Logger(log)
+        try: # UTF-8 hack
+            if python_frozen():
+                sys.setdefaultencoding("UTF-8")
+                print "UTF-8 hack installed."
+        except AttributeError:
+            print "UTF-8 hack not installed!"
+            
+except ImportError:
+    pass
 

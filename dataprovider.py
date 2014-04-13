@@ -2,10 +2,16 @@
 
 
 import os
-import pygame
+#import pygame
 import StringIO
 import zipfile
 from simpack.functions import load_config, make_config
+
+try:
+    import pygame
+except ImportError:
+    pass
+        
 
 
 CONFIG = {
@@ -52,9 +58,7 @@ class NormalProvider(object):
         for n in self.list_datas(folder, *names):
             yield n, self.raw_open(n)
 
-    def load_image(self, folder, *names):
-        n = self.get_name(folder, *names)
-        return pygame.image.load(self.raw_open(n), n)
+    
 
     def load_config(self, folder, *names):
         return load_config(self.get_content(folder, *names))
@@ -68,6 +72,15 @@ class NormalProvider(object):
             f.write(default)
             f.close()
             return open(n, mode)
+        
+    
+    try:
+        def load_image(self, folder, *names):
+            n = self.get_name(folder, *names)
+            return pygame.image.load(self.raw_open(n), n)
+        
+    except NameError:
+        pass
             
 
 
