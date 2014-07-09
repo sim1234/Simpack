@@ -4,8 +4,12 @@ import urllib2
 import urllib
 import Cookie
 import HTMLParser
-#import collections
-from simpack.functions import SubProces     
+from cookielib import CookieJar
+from _MPH import MultipartPostHandler
+
+
+from simpack.functions import SubProces, try_decode  
+
                 
 class NoRedirection(urllib2.HTTPErrorProcessor):
     def http_response(self, request, response):
@@ -14,67 +18,44 @@ class NoRedirection(urllib2.HTTPErrorProcessor):
         return response
     https_response = http_response
 
-cookieprocessor = urllib2.HTTPCookieProcessor()
-opener = urllib2.build_opener(NoRedirection, cookieprocessor)
-urllib2.install_opener(opener)
-
 
 class CookieHandler(object):
     def __init__(self, url = ""):
-        self.c = Cookie.SimpleCookie()
+        self._cookies = CookieJar()
+        self.processors = (urllib2.HTTPCookieProcessor(self._cookies), NoRedirection, MultipartPostHandler)
         self.url = url
-    
-    def log_in(self, url = "", data = None, headers = None):
-        if not url:
-            url = self.url
-        if not data:
-            data = {}
-        data = urllib.urlencode(data)
-        rq = None
-        if headers:
-            rq = urllib2.Request(url, data, headers)
-        else:
-            rq = urllib2.Request(url, data)
+        self.clear(url)
 
-        r = urllib2.urlopen(rq)
-        i = r.info()
-        #self.c = Cookie.SimpleCookie()
-        try:
-            self.c.load(i['set-cookie'])
-        except:
-            pass
-        return r
+    def clear(self, url = ""):
+        self.cookies = Cookie.SimpleCookie()
+        if url:
+            self.url = url
 
-    def get(self, url = "", data = None, headers = None, add_cookies = True):
-        if not url:
-            url = self.url
-        if not headers:
-            headers = {}
-            
+    def build_cookies(self):
         rc = ""
-        for x in self.c:
-            rc += self.c[x].key + "=" + self.c[x].value + "; "
-        headers.update({"Cookie": rc})
-            
-        rq = None
-        if data:
-            data = urllib.urlencode(data)
-            rq = urllib2.Request(url, data, headers)
-        else:
-            rq = urllib2.Request(url, headers = headers)
+        for x in self.cookies:
+            rc += self.cookies[x].key + "=" + self.cookies[x].value + "; "
+        return ("Cookie", rc)
+        
 
-        r = urllib2.urlopen(rq)
+    def get(self, url = "", data = None, headers = (), add_cookies = True):
+        if not url:
+            url = self.url
+        
+        opener = urllib2.build_opener(*self.processors)
+        opener.addheaders.append(self.build_cookies())
+        for h in headers:
+            opener.addheaders.append(h)
+        
+        r = opener.open(url, data)
+        
         if add_cookies:
             i = r.info()
             try:
-                self.c.load(i['set-cookie'])
+                self.cookies.load(i['set-cookie'])
             except:
                 pass
-        return r
-
-    def __call__(self, url = "", data = None, headers = None, add_cookies = False):
-        return self.get(url, data, headers, add_cookies)
-        
+        return r  
     
 
 class WorkManager(object):
@@ -131,34 +112,29 @@ class WorkManager(object):
         pass
     
     
+    
 class HTMlTag(object):
     indent = "  "
     
-    def __init__(self, name = "", data = "", args = []):
+    def __init__(self, name = "", kwargs = {}):
         self.sub = []
         self.name = name
-        self.data = data
-        self.args = args
+        self.kwargs = kwargs
     
     def __str__(self,):
         r = "<%s" % self.name
-        for k, v in self.args:
+        for k, v in self.kwargs.iteritems():
             r += ' %s="%s"' % (k, v)
         r += ">"
         if self.sub:
             r += "\n"
-            if self.data:
-                r += self.indent + self.data + "\n"
-        else:
-            if self.data:
-                r += self.data
         for c in self.sub:
             r += self.indent + c.__str__().replace("\n", "\n" + self.indent) + "\n"
         r += "</%s>" % self.name
         return r
     
     def __repr__(self):
-        #return 'HTMLTag("%s", "%s", %s)' % (self.name, self.data, self.args)
+        #return 'HTMLTag("%s", "%s", %s)' % (self.name, self.data, self.kwargs)
         return 'HTMLTag("%s")' % self.name
     
     def __getitem__(self, key):
@@ -177,7 +153,25 @@ class HTMlTag(object):
                 yield t
             for tt in t.search(name):
                 yield tt
+                
+    def append(self, tag):
+        self.sub.append(tag)
     
+    
+class HTMLText(HTMlTag):
+    def __init__(self, data):
+        HTMlTag.__init__(self, "Text")
+        self.data = data
+    
+    def __repr__(self):
+        return 'HTMLText("%s")' % self.data
+    
+    def __str__(self):
+        return self.data
+    
+    def append(self, tag):
+        pass
+        
     
 class MyParser(HTMLParser.HTMLParser):
     def __init__(self):
@@ -186,26 +180,54 @@ class MyParser(HTMLParser.HTMLParser):
         self.top = []
     
     def handle_starttag(self, tag, attrs):
-        t = HTMlTag(tag, "", attrs)
+        t = HTMlTag(tag, dict(attrs))
         if len(self.stack):
-            self.stack[-1].sub.append(t)
+            self.stack[-1].append(t)
         else:
             self.top.append(t)
         self.stack.append(t)
+        #print "<%s>" % tag
         
     def handle_endtag(self, tag):
-        self.stack.pop(-1)
-        #print("Encountered an end tag :", tag)
+        if len(self.stack):
+            lt = self.stack.pop(-1)
+            if lt.name != tag: # Try to repair broken html
+                if len(self.stack) and self.stack[-1].name == tag:
+                    self.stack.pop(-1)
+                self.stack.append(lt)
+                #raise HTMLParser.HTMLParseError("Closing tag '%s' but tag '%s' is not closed" % (tag, lt.name), self.getpos())
+        #print "</%s>" % tag
         
     def handle_data(self, data):
-        self.stack[-1].data = data
+        if len(self.stack):
+            t = HTMLText(data)
+            self.stack[-1].append(t)
+
+
+
+
+def get_forms(data):
+    m = MyParser()
+    m.feed(data)
+    for m in m.top[0].search("form"):
+        data = {}
+        for i in m.search("input"):
+            n = i.kwargs.get('name', None)
+            v = i.kwargs.get('value', '')
+            if n:
+                data[n] = v
+        yield m.kwargs.get('action', ''), m.kwargs.get('name', None), data
+
 
 
 if __name__ == "__main__":
-    m = MyParser()
-    m.feed('<html a="b"><head><title>Test</title></head><body>ASDF<h1>Parse me!</h1><h1>Parse me 2!</h1><h1>Parse me 3!<h1>Parse me 4!</h1></h1></body></html>')
-    print m.top[0]
-    print m.top[0][1]["h1"]
-    print list(m.top[0].search("h1"))
+    #m = MyParser()
+    #m.feed('<html a="b"><head><title>Test</title></head><body>ASDF<h1>Parse me!</h1><h1>Parse me 2!</h1><h1>Parse me 3!<h1>Parse me 4!</h1>Parse me 5!</h1></body></html>')
+    #print m.top[0]
+    #print m.top[0][1]["h1"]
+    #print list(m.top[0].search("h1"))
+    h = CookieHandler("http://thepiratebay.org/")
+    for url, n, data in get_forms(try_decode(h.get().read())):
+        print url, n, data
 
 

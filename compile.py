@@ -100,7 +100,7 @@ class Builder(object):
     def postbuild(self): # Customize build process
         raw_input("Press any key to quit")
         
-    def add_console(self, script, rename):
+    def add_console(self, script, rename = None):
         r = { 'script': script, 'copyright': self.copyright, }
         if rename:
             self.rename(script.rsplit(".", 1)[0] + ".exe", rename) 

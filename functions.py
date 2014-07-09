@@ -38,10 +38,22 @@ def tuc(s):
         except:
             return s
 
+def try_decode(s):
+    c =  between(s, "charset='", "'") or between(s, 'charset="', '"') or between(s, 'charset=', '"') or between(s, 'charset=', "'") or "UTF-8"
+    return s.decode(c)
+
 def between(s, start, end):
     try:
         i1 = s.index(start) + len(start)
         i2 = s.index(end, i1)
+        return s[i1:i2]
+    except:
+        return ""
+    
+def between_with(s, start, end):
+    try:
+        i1 = s.index(start)
+        i2 = s.index(end, i1) - len(end)
         return s[i1:i2]
     except:
         return ""
