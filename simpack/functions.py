@@ -129,8 +129,9 @@ class Controls(object):
 
 
 class SubProces(threading.Thread):
-            def __init__(self, function, lag = 0, maxduration = 0, *args, **kwargs):
+            def __init__(self, function, lag = 0, maxduration = 0, daemon = False, *args, **kwargs):
                 threading.Thread.__init__(self)
+                self.daemon = daemon
                 self.function = function
                 self.result = None
                 self.running = 2
@@ -161,6 +162,9 @@ class SubProces(threading.Thread):
                     self.join()
                     self.join(0)
                     self.join(1)
+                
+            def is_running(self):
+                return self.running
                 
             def get_result(self):
                 if self.running:

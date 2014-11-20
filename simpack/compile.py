@@ -111,7 +111,7 @@ class Builder(object):
         i = []
         for icon in icons:
             i.append((0, icon))
-        if len(i):
+        if i:
             r['icon_resources'] = i
         if rename:
             self.rename(script.rsplit(".", 1)[0] + ".exe", rename)

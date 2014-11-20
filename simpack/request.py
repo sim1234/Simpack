@@ -80,15 +80,20 @@ class WorkManager(object):
         while len(self.workers):
             self.workers.pop()
         
+    def get_worker(self, work, data):
+        return SubProces(work, 0, 0, False, *data)
+    
+    
     def processIO(self):
         while len(self.workers) < self.max_workers and self.status == 2:
             try:
-                self.workers.append(SubProces(self.work, 0, 0, *self._work.next()))
+                worker = self.get_worker(self.work, self._work.next())
+                self.workers.append(worker)
             except StopIteration:
                 self.status = 1
         x = 0
         while x < len(self.workers):
-            if not self.workers[x].running:
+            if not self.workers[x].is_running():
                 r = self.workers.pop(x).result
                 if r is not None:
                     self.result(*r)
